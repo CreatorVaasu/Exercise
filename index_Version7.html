@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HealthTrack Hub</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7fb;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 700px;
+      margin: 35px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 24px;
+    }
+    h2 {
+      text-align: center;
+      color: #3567d6;
+      margin-bottom: 12px;
+    }
+    .glory {
+      background: #ffe66e;
+      color: #b97d00;
+      font-weight: bold;
+      padding: 8px;
+      margin: 16px 0;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1.1em;
+    }
+    .giveaway {
+      background: #e6ffe6;
+      color: #287d2c;
+      font-weight: bold;
+      padding: 8px;
+      margin: 10px 0 16px 0;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1em;
+      border: 1px dashed #287d2c;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    input, textarea, select {
+      padding: 7px;
+      border: 1px solid #c8c8e0;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px;
+      background: #3567d6;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    button:hover {
+      background: #254bb2;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      font-size: 0.95em;
+    }
+    th, td {
+      border: 1px solid #e0e0ec;
+      padding: 7px;
+      text-align: center;
+    }
+    th {
+      background: #eaf0fb;
+      color: #3567d6;
+    }
+    .delete-btn {
+      color: #fff;
+      background: #d63a3a;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .delete-btn:hover {
+      background: #b21c1c;
+    }
+    .winner-row {
+      background: #ffe66e !important;
+      font-weight: bold;
+      color: #b97d00;
+    }
+    .notes-cell {
+      max-width: 120px;
+      word-break: break-word;
+      text-align: left;
+    }
+    .winner-row-monthly {
+      background: #e6ffe6 !important;
+      font-weight: bold;
+      color: #287d2c;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>HealthTrack Hub</h2>
+    <div id="glory"></div>
+    <div id="giveaway"></div>
+    <form id="trackerForm">
+      <label for="date">Date</label>
+      <input type="date" id="date" required>
+
+      <label for="exercise">Exercise (minutes/type)</label>
+      <input type="text" id="exercise" placeholder="e.g., 30 min running" required>
+
+      <label for="weight">Weight (kg or lbs)</label>
+      <input type="number" id="weight" step="0.1" required>
+
+      <label for="food">Food Eaten</label>
+      <textarea id="food" rows="2" placeholder="e.g., Oatmeal, Chicken Salad" required></textarea>
+
+      <label for="sleep">Sleep (hours)</label>
+      <input type="number" id="sleep" step="0.1" required>
+
+      <label for="mood">Mood</label>
+      <select id="mood" required>
+        <option value="">Select mood</option>
+        <option value="😀 Happy">😀 Happy</option>
+        <option value="😊 Good">😊 Good</option>
+        <option value="😐 Neutral">😐 Neutral</option>
+        <option value="😔 Sad">😔 Sad</option>
+        <option value="😡 Angry">😡 Angry</option>
+        <option value="😴 Tired">😴 Tired</option>
+        <option value="😇 Motivated">😇 Motivated</option>
+      </select>
+
+      <label for="notes">Special Notes</label>
+      <textarea id="notes" rows="2" placeholder="Any special notes or comments"></textarea>
+
+      <button type="submit">Add Entry</button>
+    </form>
+
+    <table id="entriesTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Exercise</th>
+          <th>Weight</th>
+          <th>Food</th>
+          <th>Sleep</th>
+          <th>Mood</th>
+          <th>Notes</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Entries appear here -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const form = document.getElementById('trackerForm');
+    const tableBody = document.querySelector('#entriesTable tbody');
+    const gloryDiv = document.getElementById('glory');
+    const giveawayDiv = document.getElementById('giveaway');
+    let entries = [];
+
+    function getMinutes(exerciseStr) {
+      const match = exerciseStr.match(/(\d+)\s*min/i);
+      return match ? parseInt(match[1]) : 0;
+    }
+
+    function getWeekYear(dateStr) {
+      // Returns 'YYYY-WW' for a given date string
+      const d = new Date(dateStr);
+      const year = d.getFullYear();
+      // Get week number (ISO 8601)
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return year + '-' + String(weekNo).padStart(2, '0');
+    }
+
+    function getMonthYear(dateStr) {
+      const d = new Date(dateStr);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function getCurrentWeekYear() {
+      const now = new Date();
+      return getWeekYear(now.toISOString().slice(0,10));
+    }
+
+    function getCurrentMonthYear() {
+      const now = new Date();
+      return getMonthYear(now.toISOString().slice(0,10));
+    }
+
+    function findWinnerIndexForWeek(weekYear) {
+      let maxMinutes = -1;
+      let winnerIdx = -1;
+      entries.forEach((entry, idx) => {
+        if (getWeekYear(entry.date) === weekYear) {
+          const mins = getMinutes(entry.exercise);
+          if (mins > maxMinutes) {
+            maxMinutes = mins;
+            winnerIdx = idx;
+          }
+        }
+      });
+      return (maxMinutes > 0) ? winnerIdx : -1;
+    }
+
+    function getWeeklyWinnersForMonth(monthYear) {
+      // Find all weekly winners for the given monthYear
+      let weeks = {};
+      entries.forEach((entry, idx) => {
+        if (getMonthYear(entry.date) === monthYear) {
+          const week = getWeekYear(entry.date);
+          if (!weeks[week]) {
+            weeks[week] = [];
+          }
+          weeks[week].push({ idx, mins: getMinutes(entry.exercise) });
+        }
+      });
+      let winners = [];
+      Object.keys(weeks).forEach(week => {
+        // Find winner in each week
+        let maxMins = -1, winnerIdx = -1;
+        weeks[week].forEach(e => {
+          if (e.mins > maxMins) {
+            maxMins = e.mins;
+            winnerIdx = e.idx;
+          }
+        });
+        if (winnerIdx !== -1) {
+          winners.push(winnerIdx);
+        }
+      });
+      return winners;
+    }
+
+    function findWinnerIndexForMonth(monthYear) {
+      // Winner among weekly winners for the monthly giveaway
+      const weeklyWinners = getWeeklyWinnersForMonth(monthYear);
+      let maxMinutes = -1;
+      let monthWinnerIdx = -1;
+      weeklyWinners.forEach(idx => {
+        const mins = getMinutes(entries[idx].exercise);
+        if (mins > maxMinutes) {
+          maxMinutes = mins;
+          monthWinnerIdx = idx;
+        }
+      });
+      return (maxMinutes > 0) ? monthWinnerIdx : -1;
+    }
+
+    function renderEntries() {
+      tableBody.innerHTML = '';
+      const currentWeekYear = getCurrentWeekYear();
+      const currentMonthYear = getCurrentMonthYear();
+      const winnerIdxWeek = findWinnerIndexForWeek(currentWeekYear);
+      const weeklyWinnersIdxs = getWeeklyWinnersForMonth(currentMonthYear);
+      const winnerIdxMonth = findWinnerIndexForMonth(currentMonthYear);
+
+      entries.forEach((entry, idx) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.exercise}</td>
+          <td>${entry.weight}</td>
+          <td>${entry.food}</td>
+          <td>${entry.sleep}</td>
+          <td>${entry.mood}</td>
+          <td class="notes-cell">${entry.notes || ''}</td>
+          <td><button class="delete-btn" onclick="deleteEntry(${idx})">Delete</button></td>
+        `;
+        if (idx === winnerIdxWeek) {
+          row.classList.add('winner-row'); // weekly winner highlight
+        }
+        if (idx === winnerIdxMonth && weeklyWinnersIdxs.includes(idx)) {
+          row.classList.add('winner-row-monthly'); // monthly giveaway highlight
+        }
+        tableBody.appendChild(row);
+      });
+
+      // Weekly glory message
+      if (winnerIdxWeek !== -1) {
+        const entry = entries[winnerIdxWeek];
+        const weekNum = currentWeekYear.split('-')[1];
+        gloryDiv.innerHTML = `🏆 <span class="glory">Infinite glory for <strong>Week ${weekNum} (${currentWeekYear})</strong> goes to:<br>
+        <strong>${entry.exercise}</strong> on ${entry.date}!</span> 🏆`;
+      } else {
+        gloryDiv.innerHTML = `<span class="glory">No weekly champion yet. Log your exercise to compete!</span>`;
+      }
+
+      // Monthly giveaway message
+      if (winnerIdxMonth !== -1) {
+        const entry = entries[winnerIdxMonth];
+        const monthName = new Date(entry.date).toLocaleString('default', { month: 'long' });
+        giveawayDiv.innerHTML = `🎉 <span class="giveaway">Monthly Giveaway Entry: <br>
+        <strong>${entry.exercise}</strong> (<strong>${entry.date}</strong>) is the top weekly winner for <strong>${monthName} ${currentMonthYear.slice(0,4)}</strong>!<br>
+        This entry is automatically entered into the <span style="color:#b97d00;">$250 giveaway</span>!</span> 🎉`;
+      } else {
+        giveawayDiv.innerHTML = `<span class="giveaway">No monthly giveaway entry yet. Weekly winners automatically qualify for the $250 giveaway!</span>`;
+      }
+    }
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const entry = {
+        date: document.getElementById('date').value,
+        exercise: document.getElementById('exercise').value,
+        weight: document.getElementById('weight').value,
+        food: document.getElementById('food').value,
+        sleep: document.getElementById('sleep').value,
+        mood: document.getElementById('mood').value,
+        notes: document.getElementById('notes').value
+      };
+      entries.push(entry);
+      renderEntries();
+      form.reset();
+    };
+
+    window.deleteEntry = function(idx) {
+      entries.splice(idx, 1);
+      renderEntries();
+    };
+
+    renderEntries();
+  </script>
+</body>
+</html>
